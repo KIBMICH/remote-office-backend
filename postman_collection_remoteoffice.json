@@ -1,0 +1,244 @@
+{
+  "info": {
+    "name": "RemoteOffice API - Auth",
+    "_postman_id": "remoteoffice-auth-collection",
+    "description": "Collection for testing the auth endpoints (register, login) and a protected route.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5050",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Register",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"password\": \"Password123\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","auth","register"]
+        },
+        "description": "Register a new user. Use unique email per run or update the body."
+      },
+      "response": []
+    },
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"Password123\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","auth","login"]
+        },
+        "description": "Login to receive a JWT token. The response token will be saved to the environment variable 'token' by the test script below."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Save token to environment variable 'token' if present",
+              "if (pm.response.code === 200) {",
+              "  try {",
+              "    const json = pm.response.json();",
+              "    if (json.token) {",
+              "      pm.environment.set('token', json.token);",
+              "      pm.test('Token saved to environment', function () { pm.expect(json.token).to.be.a('string'); });",
+              "    } else {",
+              "      pm.test('Response has token', function () { pm.expect.fail('No token in response'); });",
+              "    }",
+              "  } catch (e) {",
+              "    pm.test('Response JSON parse', function () { pm.expect.fail(e.message); });",
+              "  }",
+              "} else {",
+              "  pm.test('Login returned 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Protected - GET /api/protected",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/protected",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","protected"]
+        },
+        "description": "Hit a protected route using the 'token' environment variable set by the Login request."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Has authorized message', function () {",
+              "  const json = pm.response.json();",
+              "  pm.expect(json).to.have.property('message');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "response": []
+    }
+    ,
+    {
+      "name": "Create Company - POST /api/company/create",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Acme Corp\",\n  \"address\": \"123 Main St\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/company/create",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","company","create"]
+        },
+        "description": "Create a company (admin only). Ensure 'token' is set by Login and belongs to an admin user."
+      },
+      "response": []
+    }
+    ,
+    {
+      "name": "Admin Register - POST /api/auth/register",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Admin User\",\n  \"email\": \"admin@example.com\",\n  \"password\": \"AdminPass123!\",\n  \"role\": \"admin\",\n  \"adminCode\": \"YOUR_ADMIN_SECRET_HERE\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","auth","register"]
+        },
+        "description": "Register an admin user. Replace YOUR_ADMIN_SECRET_HERE with ADMIN_SECRET from your .env or environment."
+      },
+      "response": []
+    },
+    {
+      "name": "Admin Login - POST /api/auth/login",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"AdminPass123!\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","auth","login"]
+        },
+        "description": "Login as admin and save the token to environment variable 'token'."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "  const json = pm.response.json();",
+              "  if (json.token) pm.environment.set('token', json.token);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Employee Register - POST /api/auth/register",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Employee One\",\n  \"email\": \"user@example.com\",\n  \"password\": \"UserPass123!\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","auth","register"]
+        },
+        "description": "Register an employee user (defaults to role 'employee')."
+      },
+      "response": []
+    },
+    {
+      "name": "Link User to Company - POST /api/company/link-user",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": \"<USER_ID>\",\n  \"companyId\": \"<COMPANY_ID>\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/company/link-user",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","company","link-user"]
+        },
+        "description": "Link a user to a company (admin only). Replace USER_ID and COMPANY_ID from previous responses."
+      },
+      "response": []
+    }
+  ]
+}
