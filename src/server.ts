@@ -18,7 +18,6 @@ app.use(express.json());
 app.use(cors());
 
 // initialize passport
-app.use(express.json());
 app.use(passport.initialize());
 
 // routes

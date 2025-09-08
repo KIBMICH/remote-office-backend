@@ -13,9 +13,26 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importDefault(require("mongoose"));
+const getMongoUri = () => {
+    var _a;
+    const direct = (_a = process.env.MONGO_URI) === null || _a === void 0 ? void 0 : _a.trim();
+    if (direct)
+        return direct;
+    const user = process.env.MONGO_USER;
+    const pass = process.env.MONGO_PASS;
+    const host = process.env.MONGO_HOST || "cluster0.abcd.mongodb.net"; // update to your cluster host
+    const db = process.env.MONGO_DB || "remoteoffice";
+    if (!user || !pass) {
+        throw new Error("Missing MONGO_URI or (MONGO_USER and MONGO_PASS). Provide either MONGO_URI or individual credentials.");
+    }
+    const safeUser = encodeURIComponent(user);
+    const safePass = encodeURIComponent(pass);
+    return `mongodb+srv://${safeUser}:${safePass}@${host}/${db}?retryWrites=true&w=majority`;
+};
 const connectDB = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const conn = yield mongoose_1.default.connect(process.env.MONGO_URI);
+        const uri = getMongoUri();
+        const conn = yield mongoose_1.default.connect(uri);
         console.log(`MongoDB Connected: ${conn.connection.host}`);
     }
     catch (error) {
