@@ -8,7 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "supersecret"; // keep in .env in p
 // REGISTER
 export const register = async (req: Request, res: Response) => {
   try {
-    const { name, email, password, role, adminCode } = req.body;
+    const { name, email, password, role, adminCode, company } = req.body;
 
     // check if user exists
     const existingUser = await User.findOne({ email });
@@ -29,12 +29,12 @@ export const register = async (req: Request, res: Response) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // save user (default role to 'employee' if not provided)
-    const user = new User({ name, email, password: hashedPassword, role: role || "employee" });
+    const user = new User({ name, email, password: hashedPassword, role: role || "employee", company });
     await user.save();
 
     // generate token including role
     const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role },
+      { id: user._id, email: user.email, role: user.role, company: user.company },
       JWT_SECRET,
       { expiresIn: "1h" }
     );
@@ -42,7 +42,7 @@ export const register = async (req: Request, res: Response) => {
     res.status(201).json({
       message: "User registered successfully",
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+      user: { id: user._id, name: user.name, email: user.email, role: user.role, company: user.company ?? null },
     });
   } catch (error) {
     res.status(500).json({ error: "Server error" });
@@ -62,8 +62,8 @@ export const login = async (req: Request, res: Response) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
 
-    // create token (include role)
-    const token = jwt.sign({ id: user._id, email: user.email, role: user.role }, JWT_SECRET, {
+    // create token (include role and company)
+    const token = jwt.sign({ id: user._id, email: user.email, role: user.role, company: user.company }, JWT_SECRET, {
       expiresIn: "1h",
     });
     // return richer response useful for clients (but never include password)
@@ -75,6 +75,7 @@ export const login = async (req: Request, res: Response) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        company: user.company ?? null,
       },
       expiresIn: 3600,
     });
