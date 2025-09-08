@@ -1,45 +1,32 @@
-import express, { Request, Response } from "express";
-import { authMiddleware, AuthRequest } from "../middleware/authMiddleware";
-import { authorizeRoles } from "../middleware/roleMiddleware";
-import Company from "../models/Company";
-import User from "../models/User";
+import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
 
-const router = express.Router();
+const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 
-// Create a company (admin only). The creating admin becomes `createdBy`.
-router.post("/create", authMiddleware, authorizeRoles("admin"), async (req: AuthRequest, res: Response) => {
-  try {
-    const { name, address } = req.body;
-    if (!name) return res.status(400).json({ message: "Company name is required" });
+export interface AuthRequest<T = any> extends Request<any, any, T> {
+  user?: {
+    id: string;
+    email: string;
+    role?: string;
+  };
+}
 
-    const existing = await Company.findOne({ name });
-    if (existing) return res.status(400).json({ message: "Company already exists" });
+export const authMiddleware = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  const token = req.headers.authorization?.split(" ")[1]; // "Bearer <token>"
 
-    const company = new Company({ name, address, createdBy: req.user.id });
-    await company.save();
-    res.status(201).json({ message: "Company created successfully", company });
-  } catch (error) {
-    res.status(500).json({ message: "Server error" });
+  if (!token) {
+    return res.status(401).json({ message: "No token, authorization denied" });
   }
-});
 
-// Link an existing user to a company (admin only)
-router.post("/link-user", authMiddleware, authorizeRoles("admin"), async (req: AuthRequest, res: Response) => {
   try {
-    const { userId, companyId } = req.body;
-    if (!userId || !companyId) return res.status(400).json({ message: "userId and companyId are required" });
-
-    const user = await User.findById(userId);
-    const company = await Company.findById(companyId);
-    if (!user || !company) return res.status(404).json({ message: "User or Company not found" });
-
-    user.company = String(company._id);
-    await user.save();
-
-    res.json({ message: "User linked to company successfully", user });
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string; role?: string };
+    req.user = decoded;
+    next();
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    res.status(401).json({ message: "Token is not valid" });
   }
-});
-
-export default router;
+};

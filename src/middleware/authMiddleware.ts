@@ -3,14 +3,21 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 
+// Extend Request properly to keep all Express properties like `body` and `get`
 export interface AuthRequest extends Request {
   user?: any;
 }
 
-export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
-  const token = req.get("Authorization")?.split(" ")[1]; // "Bearer <token>"
+export const authMiddleware = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  const token = req.headers.authorization?.split(" ")[1]; // "Bearer <token>"
 
-  if (!token) return res.status(401).json({ message: "No token, authorization denied" });
+  if (!token) {
+    return res.status(401).json({ message: "No token, authorization denied" });
+  }
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
