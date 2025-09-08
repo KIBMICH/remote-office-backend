@@ -20,7 +20,6 @@ app.use(express_1.default.json());
 // enable CORS so browser preflight (OPTIONS) is handled
 app.use((0, cors_1.default)());
 // initialize passport
-app.use(express_1.default.json());
 app.use(googleAuth_1.default.initialize());
 // routes
 app.use("/api/auth", authRoutes_1.default);

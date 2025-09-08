@@ -61,3 +61,6 @@ Desktop.ini
 # IDE/editor
 .vscode/
 .idea/
+
+# Postman collections
+postman_collection_remoteoffice.json
