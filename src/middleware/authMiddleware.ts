@@ -8,7 +8,7 @@ export interface AuthRequest extends Request {
 }
 
 export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
-  const token = req.header("Authorization")?.split(" ")[1]; // "Bearer <token>"
+  const token = req.get("Authorization")?.split(" ")[1]; // "Bearer <token>"
 
   if (!token) return res.status(401).json({ message: "No token, authorization denied" });
 
