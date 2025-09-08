@@ -3,16 +3,19 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 
-// Extend Request properly to keep all Express properties like `body` and `get`
-export interface AuthRequest extends Request {
-  user?: any;
+// Generic AuthRequest that preserves all Express Request properties and
+// allows specifying the body type via `T`.
+export interface AuthRequest<T = any> extends Request<any, any, T> {
+  user?: {
+    id: string;
+    email: string;
+    role?: string;
+  };
 }
 
-export const authMiddleware = (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+import type { RequestHandler } from "express";
+
+export const authMiddleware: RequestHandler = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1]; // "Bearer <token>"
 
   if (!token) {
@@ -20,8 +23,8 @@ export const authMiddleware = (
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string; role?: string };
+    (req as AuthRequest).user = decoded;
     next();
   } catch (error) {
     res.status(401).json({ message: "Token is not valid" });
