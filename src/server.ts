@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import session from "express-session";
 import dotenv from "dotenv";
 import connectDB from "./config/db";
 import passport from "./config/googleAuth";
@@ -16,6 +17,14 @@ const app = express();
 app.use(express.json());
 // enable CORS so browser preflight (OPTIONS) is handled
 app.use(cors());
+
+// Session configuration for OAuth state management
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-session-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false, maxAge: 10 * 60 * 1000 } // 10 minutes
+}));
 
 // initialize passport
 app.use(passport.initialize());
