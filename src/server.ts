@@ -7,6 +7,7 @@ import passport from "./config/googleAuth";
 import authRoutes from "./routes/authRoutes";
 import googleAuthRoutes from "./routes/googleAuth";
 import companyRoutes from "./routes/companyRoutes";
+import userRoutes from "./routes/userRoutes";
 import { authMiddleware } from "./middleware/authMiddleware";
 
 // Load environment variables and connect DB
@@ -33,6 +34,7 @@ app.use(passport.initialize());
 app.use("/api/auth", authRoutes);
 app.use("/api/auth", googleAuthRoutes);
 app.use("/api/company", companyRoutes);
+app.use("/api/users", userRoutes);
 
 // health/root route
 app.get("/", (_req, res) => {
