@@ -27,7 +27,8 @@
     "mongoose": "^8.18.0",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "zod": "^4.1.8"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

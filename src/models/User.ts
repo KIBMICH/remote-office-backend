@@ -17,6 +17,7 @@ export interface IUser extends Document {
   timezone?: string;
   language?: string; // default 'en'
   status?: "active" | "inactive";
+  country?: string;
   company?: string; // company id reference
   createdAt?: Date;
   updatedAt?: Date;
@@ -42,6 +43,7 @@ const userSchema = new Schema<IUser>({
   timezone: { type: String },
   language: { type: String, default: "en" },
   status: { type: String, enum: ["active", "inactive"], default: "active" },
+  country: { type: String },
   company: { type: Schema.Types.ObjectId, ref: "Company", required: false },
 }, { timestamps: true });
 

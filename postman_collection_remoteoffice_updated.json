@@ -1,0 +1,156 @@
+{
+  "info": {
+    "name": "RemoteOffice API (Updated)",
+    "_postman_id": "d4a3b1f0-remoteoffice-collection",
+    "description": "Postman collection for RemoteOffice backend with user and company profile endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"isaiah@example.com\",\n  \"password\": \"Password123!\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Isaiah Okibe\",\n  \"email\": \"isaiah@example.com\",\n  \"password\": \"Password123!\",\n  \"role\": \"employee\"\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/users/me", "host": ["{{baseUrl}}"], "path": ["api", "users", "me"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Me",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/users/update", "host": ["{{baseUrl}}"], "path": ["api", "users", "update"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Isaiah\",\n  \"lastName\": \"Okibe\",\n  \"phone\": \"+2348012345678\",\n  \"jobTitle\": \"Senior Developer\",\n  \"avatarUrl\": \"https://cdn.remortify.com/avatars/isaiah.png\",\n  \"timezone\": \"Africa/Lagos\",\n  \"language\": \"en\",\n  \"status\": \"active\",\n  \"country\": \"Nigeria\"\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Company",
+      "item": [
+        {
+          "name": "Get Company",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/company", "host": ["{{baseUrl}}"], "path": ["api", "company"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Company",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/company/update", "host": ["{{baseUrl}}"], "path": ["api", "company", "update"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Dimension Transport Company\",\n  \"phone\": \"+2349012345678\",\n  \"logoUrl\": \"https://cdn.remortify.com/company/newdimension.png\",\n  \"website\": \"https://newdimension.com\",\n  \"industry\": \"Transportation\",\n  \"country\": \"Nigeria\",\n  \"subscriptionPlan\": \"pro\",\n  \"subscriptionStatus\": \"active\",\n  \"billingCycle\": \"monthly\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Company (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/company/create", "host": ["{{baseUrl}}"], "path": ["api", "company", "create"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Dimension Transport Company\",\n  \"address\": \"123 Main Street, Minna, Nigeria\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Link User to Company (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/company/link-user", "host": ["{{baseUrl}}"], "path": ["api", "company", "link-user"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"<USER_ID>\",\n  \"companyId\": \"<COMPANY_ID>\"\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Ensure Authorization header uses {{token}} if set in environment",
+          "if (pm.environment.get('token')) {",
+          "  pm.request.headers.upsert({ key: 'Authorization', value: 'Bearer ' + pm.environment.get('token') });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": []
+}

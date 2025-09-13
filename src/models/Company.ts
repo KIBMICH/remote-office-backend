@@ -8,6 +8,7 @@ export interface ICompany extends Document {
   phone?: string;
   website?: string;
   email?: string;
+  country?: string;
   subscriptionPlan?: "free" | "pro" | "enterprise";
   subscriptionStatus?: "active" | "canceled" | "trial";
   billingCycle?: "monthly" | "yearly";
@@ -24,6 +25,7 @@ const companySchema = new Schema<ICompany>({
   phone: { type: String },
   website: { type: String },
   email: { type: String },
+  country: { type: String },
   subscriptionPlan: { type: String, enum: ["free", "pro", "enterprise"], default: "free" },
   subscriptionStatus: { type: String, enum: ["active", "canceled", "trial"], default: "trial" },
   billingCycle: { type: String, enum: ["monthly", "yearly"], default: "monthly" },

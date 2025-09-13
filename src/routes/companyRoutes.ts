@@ -3,6 +3,9 @@ import { authMiddleware, AuthRequest } from "../middleware/authMiddleware";
 import { authorizeRoles } from "../middleware/roleMiddleware";
 import Company from "../models/Company";
 import User from "../models/User";
+import { z } from "zod";
+import validate from "../middleware/validate";
+import AuditLog from "../models/AuditLog";
 
 const router = express.Router();
 
@@ -86,22 +89,23 @@ const getCompanyHandler: RequestHandler = async (req, res: Response) => {
 router.get("/", authMiddleware, getCompanyHandler);
 
 // Update company profile (admin or owner)
-interface UpdateCompanyBody {
-  name?: string;
-  logoUrl?: string;
-  industry?: string;
-  address?: string;
-  phone?: string;
-  website?: string;
-  email?: string;
-  subscriptionPlan?: "free" | "pro" | "enterprise";
-  subscriptionStatus?: "active" | "canceled" | "trial";
-  billingCycle?: "monthly" | "yearly";
-}
+const updateCompanySchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  logoUrl: z.string().url().max(2048).optional(),
+  industry: z.string().max(100).optional(),
+  address: z.string().max(300).optional(),
+  phone: z.string().max(50).optional(),
+  website: z.string().url().max(2048).optional(),
+  email: z.string().email().max(200).optional(),
+  country: z.string().max(100).optional(),
+  subscriptionPlan: z.enum(["free", "pro", "enterprise"]).optional(),
+  subscriptionStatus: z.enum(["active", "canceled", "trial"]).optional(),
+  billingCycle: z.enum(["monthly", "yearly"]).optional(),
+});
 
 const updateCompanyHandler: RequestHandler<any, any, any> = async (req, res: Response) => {
   try {
-    const { user } = req as AuthRequest<UpdateCompanyBody>;
+    const { user } = req as AuthRequest<z.infer<typeof updateCompanySchema>>;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
     // find company associated with the user
@@ -114,8 +118,8 @@ const updateCompanyHandler: RequestHandler<any, any, any> = async (req, res: Res
     }
     if (!company) return res.status(404).json({ message: "Company not found" });
 
-    const updatableFields: (keyof UpdateCompanyBody)[] = [
-      "name", "logoUrl", "industry", "address", "phone", "website", "email",
+    const updatableFields: (keyof z.infer<typeof updateCompanySchema>)[] = [
+      "name", "logoUrl", "industry", "address", "phone", "website", "email", "country",
       "subscriptionPlan", "subscriptionStatus", "billingCycle"
     ];
     updatableFields.forEach((field) => {
@@ -125,12 +129,32 @@ const updateCompanyHandler: RequestHandler<any, any, any> = async (req, res: Res
     });
 
     await company.save();
+    // Audit log
+    try {
+      const changes: Partial<z.infer<typeof updateCompanySchema>> = {};
+      updatableFields.forEach((f) => {
+        if (typeof (req.body as any)[f] !== "undefined") {
+          (changes as any)[f] = (req.body as any)[f];
+        }
+      });
+      await AuditLog.create({
+        actorId: user.id as any,
+        entityType: "company",
+        entityId: company._id as any,
+        action: "update",
+        changes,
+        ip: (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || undefined,
+        userAgent: req.headers["user-agent"] as string,
+      });
+    } catch {
+      // swallow audit errors
+    }
     res.json({ message: "Company updated successfully", company });
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }
 };
 
-router.put("/update", authMiddleware, authorizeRoles("admin", "owner"), updateCompanyHandler);
+router.put("/update", authMiddleware, authorizeRoles("admin", "owner"), validate(updateCompanySchema), updateCompanyHandler);
 
 export default router;

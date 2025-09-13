@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User";
+import serializeUser from "../utils/serializeUser";
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret"; // keep in .env in production
 
@@ -42,7 +43,7 @@ export const register = async (req: Request, res: Response) => {
     res.status(201).json({
       message: "User registered successfully",
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role, company: user.company ?? null },
+      user: serializeUser(user),
     });
   } catch (error) {
     res.status(500).json({ error: "Server error" });
@@ -70,13 +71,7 @@ export const login = async (req: Request, res: Response) => {
     res.json({
       message: "Login successful",
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        company: user.company ?? null,
-      },
+      user: serializeUser(user),
       expiresIn: 3600,
     });
   } catch (error) {
