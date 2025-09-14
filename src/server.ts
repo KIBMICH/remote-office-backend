@@ -19,6 +19,10 @@ const app = express();
 app.use(express.json());
 // enable CORS so browser preflight (OPTIONS) is handled
 app.use(cors());
+// trust proxy when deployed behind a proxy (e.g., Render) so secure cookies work
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
 
 // Session configuration for OAuth state management (use Mongo-backed store in production)
 const SESSION_SECRET = process.env.SESSION_SECRET || "your-session-secret";
