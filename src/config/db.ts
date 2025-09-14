@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const getMongoUri = (): string => {
+export const getMongoUri = (): string => {
   const direct = process.env.MONGO_URI?.trim();
   if (direct) return direct;
 
