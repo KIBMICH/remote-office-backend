@@ -96,7 +96,7 @@ const uploadAvatarHandler: RequestHandler = async (req, res: Response) => {
     const { user } = req as AuthRequest;
     if (!user?.id) return res.status(401).json({ message: "Unauthorized" });
 
-    const file = (req as any).file as Express.Multer.File | undefined;
+    const file = (req as any).file as any;
     if (!file || !file.buffer) {
       return res.status(400).json({ message: "No image file uploaded" });
     }
