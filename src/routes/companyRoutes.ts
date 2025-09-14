@@ -6,6 +6,8 @@ import User from "../models/User";
 import { z } from "zod";
 import validate from "../middleware/validate";
 import AuditLog from "../models/AuditLog";
+import upload from "../middleware/upload";
+import { uploadBufferToCloudinary, destroyByPublicId } from "../utils/cloudinaryUpload";
 
 const router = express.Router();
 
@@ -156,5 +158,59 @@ const updateCompanyHandler: RequestHandler<any, any, any> = async (req, res: Res
 };
 
 router.put("/update", authMiddleware, authorizeRoles("admin", "owner"), validate(updateCompanySchema), updateCompanyHandler);
+
+// PATCH /api/companies/logo - upload and update company logo (admin or owner)
+const uploadLogoHandler: RequestHandler = async (req, res: Response) => {
+  try {
+    const { user } = req as AuthRequest;
+    if (!user?.id) return res.status(401).json({ message: "Unauthorized" });
+
+    const file = (req as any).file as any;
+    if (!file || !file.buffer) {
+      return res.status(400).json({ message: "No image file uploaded" });
+    }
+
+    // find company associated with the user
+    let company: any = null;
+    const currentUser = await User.findById(user.id);
+    if (currentUser?.company) {
+      company = await Company.findById(currentUser.company);
+    } else {
+      company = await Company.findOne({ createdBy: user.id });
+    }
+    if (!company) return res.status(404).json({ message: "Company not found" });
+
+    const folder = `remoteoffice/companies/${company._id}`;
+    const result = await uploadBufferToCloudinary(file.buffer, folder);
+
+    // cleanup previous logo if any
+    if (company.logoPublicId) {
+      await destroyByPublicId(company.logoPublicId);
+    }
+
+    company.logoUrl = result.secure_url;
+    company.logoPublicId = result.public_id;
+    await company.save();
+
+    try {
+      await AuditLog.create({
+        actorId: user.id as any,
+        entityType: "company",
+        entityId: company._id as any,
+        action: "update_logo",
+        changes: { logoUrl: company.logoUrl },
+        ip: (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || undefined,
+        userAgent: req.headers["user-agent"] as string,
+      });
+    } catch {}
+
+    res.json({ message: "Logo updated successfully", company });
+  } catch (error: any) {
+    const msg = error?.message || "Server error";
+    res.status(500).json({ message: msg });
+  }
+};
+
+router.patch("/logo", authMiddleware, authorizeRoles("admin", "owner"), upload.single("logo"), uploadLogoHandler);
 
 export default router;

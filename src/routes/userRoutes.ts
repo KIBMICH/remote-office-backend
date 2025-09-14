@@ -5,6 +5,8 @@ import { z } from "zod";
 import validate from "../middleware/validate";
 import serializeUser from "../utils/serializeUser";
 import AuditLog from "../models/AuditLog";
+import upload from "../middleware/upload";
+import { uploadBufferToCloudinary, destroyByPublicId } from "../utils/cloudinaryUpload";
 
 const router = express.Router();
 
@@ -87,5 +89,53 @@ const updateMeHandler: RequestHandler<any, any, any> = async (req, res: Response
 };
 
 router.put("/update", authMiddleware, validate(updateUserSchema), updateMeHandler);
+
+// PATCH /api/users/avatar - upload and update user's avatar image
+const uploadAvatarHandler: RequestHandler = async (req, res: Response) => {
+  try {
+    const { user } = req as AuthRequest;
+    if (!user?.id) return res.status(401).json({ message: "Unauthorized" });
+
+    const file = (req as any).file as Express.Multer.File | undefined;
+    if (!file || !file.buffer) {
+      return res.status(400).json({ message: "No image file uploaded" });
+    }
+
+    const folder = `remoteoffice/users/${user.id}`;
+    const result = await uploadBufferToCloudinary(file.buffer, folder);
+
+    const current = await User.findById(user.id);
+    if (!current) return res.status(404).json({ message: "User not found" });
+
+    // cleanup old image if exists
+    if (current.avatarPublicId) {
+      await destroyByPublicId(current.avatarPublicId);
+    }
+
+    current.avatarUrl = result.secure_url;
+    current.avatarPublicId = result.public_id;
+    await current.save();
+
+    // audit log (best-effort)
+    try {
+      await AuditLog.create({
+        actorId: user.id as any,
+        entityType: "user",
+        entityId: current._id as any,
+        action: "update_avatar",
+        changes: { avatarUrl: current.avatarUrl },
+        ip: (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || undefined,
+        userAgent: req.headers["user-agent"] as string,
+      });
+    } catch {}
+
+    res.json({ message: "Profile image updated successfully", user: serializeUser(current) });
+  } catch (error: any) {
+    const msg = error?.message || "Server error";
+    res.status(500).json({ message: msg });
+  }
+};
+
+router.patch("/avatar", authMiddleware, upload.single("avatar"), uploadAvatarHandler);
 
 export default router;

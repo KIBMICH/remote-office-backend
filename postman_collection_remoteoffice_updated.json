@@ -70,6 +70,23 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "Upload Avatar",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/users/avatar", "host": ["{{baseUrl}}"], "path": ["api", "users", "avatar"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "avatar", "type": "file", "src": [] }
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -131,6 +148,23 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"userId\": \"<USER_ID>\",\n  \"companyId\": \"<COMPANY_ID>\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Company Logo (Admin/Owner)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/company/logo", "host": ["{{baseUrl}}"], "path": ["api", "company", "logo"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "logo", "type": "file", "src": [] }
+              ]
             }
           },
           "response": []

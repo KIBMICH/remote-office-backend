@@ -3,6 +3,7 @@ import mongoose, { Document, Schema } from "mongoose";
 export interface ICompany extends Document {
   name: string;
   logoUrl?: string;
+  logoPublicId?: string;
   industry?: string;
   address?: string;
   phone?: string;
@@ -20,6 +21,7 @@ export interface ICompany extends Document {
 const companySchema = new Schema<ICompany>({
   name: { type: String, required: true, unique: true },
   logoUrl: { type: String },
+  logoPublicId: { type: String },
   industry: { type: String },
   address: { type: String },
   phone: { type: String },

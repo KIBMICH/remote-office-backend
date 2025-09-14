@@ -11,6 +11,7 @@ export interface IUser extends Document {
   role: "admin" | "employee" | "owner" | "member";
   avatar?: string; // legacy avatar field
   avatarUrl?: string; // new avatar URL field
+  avatarPublicId?: string; // Cloudinary public id for cleanup
   googleId?: string;
   phone?: string;
   jobTitle?: string;
@@ -37,6 +38,7 @@ const userSchema = new Schema<IUser>({
   },
   avatar: { type: String },
   avatarUrl: { type: String },
+  avatarPublicId: { type: String },
   googleId: { type: String },
   phone: { type: String },
   jobTitle: { type: String },
