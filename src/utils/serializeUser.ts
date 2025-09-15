@@ -23,6 +23,7 @@ export function serializeUser(u: any) {
     language: u.language ?? "en",
     status: u.status ?? "active",
     country: u.country ?? null,
+    address: u.address ?? null,
     company: u.company ?? null,
     createdAt: u.createdAt ?? null,
     updatedAt: u.updatedAt ?? null,

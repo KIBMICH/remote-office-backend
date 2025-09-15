@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getMongoUri = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const getMongoUri = () => {
     const direct = process.env.MONGO_URI?.trim();
@@ -19,9 +20,10 @@ const getMongoUri = () => {
     const safePass = encodeURIComponent(pass);
     return `mongodb+srv://${safeUser}:${safePass}@${host}/${db}?retryWrites=true&w=majority`;
 };
+exports.getMongoUri = getMongoUri;
 const connectDB = async () => {
     try {
-        const uri = getMongoUri();
+        const uri = (0, exports.getMongoUri)();
         const conn = await mongoose_1.default.connect(uri);
         console.log(`MongoDB Connected: ${conn.connection.host}`);
     }
