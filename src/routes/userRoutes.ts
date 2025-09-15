@@ -38,6 +38,7 @@ const updateUserSchema = z.object({
   language: z.string().max(10).optional(),
   status: z.enum(["active", "inactive"]).optional(),
   country: z.string().max(100).optional(),
+  address: z.string().max(500).optional(),
 });
 
 const updateMeHandler: RequestHandler<any, any, any> = async (req, res: Response) => {
@@ -55,6 +56,7 @@ const updateMeHandler: RequestHandler<any, any, any> = async (req, res: Response
       "language",
       "status",
       "country",
+      "address",
     ];
 
     const toUpdate: Partial<z.infer<typeof updateUserSchema>> = {};
