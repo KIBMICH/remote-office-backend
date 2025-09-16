@@ -8,7 +8,7 @@ export interface IUser extends Document {
   lastName?: string;
   email: string;
   password: string;
-  role: "admin" | "employee" | "owner" | "member";
+  role: "superadmin" | "company_admin" | "employee" | "member";
   avatar?: string; // legacy avatar field
   avatarUrl?: string; // new avatar URL field
   avatarPublicId?: string; // Cloudinary public id for cleanup
@@ -34,7 +34,7 @@ const userSchema = new Schema<IUser>({
   password: { type: String, required: true },
   role: {
     type: String,
-    enum: ["admin", "employee", "owner", "member"],
+    enum: ["superadmin", "company_admin", "employee", "member"],
     default: "employee",
   },
   avatar: { type: String },

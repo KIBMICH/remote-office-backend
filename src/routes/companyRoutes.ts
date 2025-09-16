@@ -1,6 +1,6 @@
 import express, { Response, RequestHandler } from "express";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware";
-import { authorizeRoles } from "../middleware/roleMiddleware";
+import { authorizeRoles, requireSuperAdmin, requireCompanyAdmin, requireCompanyAccess } from "../middleware/roleMiddleware";
 import Company from "../models/Company";
 import User from "../models/User";
 import { z } from "zod";
@@ -40,7 +40,7 @@ const createCompanyHandler: RequestHandler<any, any, any> = async (req, res: Res
   }
 };
 
-router.post("/create", authMiddleware, authorizeRoles("admin"), createCompanyHandler);
+router.post("/create", authMiddleware, requireSuperAdmin, createCompanyHandler);
 
 // Link an existing user to a company (admin only)
 const linkUserHandler: RequestHandler<any, any, any> = async (req, res: Response) => {
@@ -61,7 +61,7 @@ const linkUserHandler: RequestHandler<any, any, any> = async (req, res: Response
   }
 };
 
-router.post("/link-user", authMiddleware, authorizeRoles("admin"), linkUserHandler);
+router.post("/link-user", authMiddleware, requireSuperAdmin, linkUserHandler);
 
 // Get the current user's company profile
 const getCompanyHandler: RequestHandler = async (req, res: Response) => {
@@ -157,7 +157,7 @@ const updateCompanyHandler: RequestHandler<any, any, any> = async (req, res: Res
   }
 };
 
-router.put("/update", authMiddleware, authorizeRoles("admin", "owner"), validate(updateCompanySchema), updateCompanyHandler);
+router.put("/update", authMiddleware, authorizeRoles("superadmin", "company_admin"), validate(updateCompanySchema), updateCompanyHandler);
 
 // PATCH /api/companies/logo - upload and update company logo (admin or owner)
 const uploadLogoHandler: RequestHandler = async (req, res: Response) => {
@@ -211,6 +211,6 @@ const uploadLogoHandler: RequestHandler = async (req, res: Response) => {
   }
 };
 
-router.patch("/logo", authMiddleware, authorizeRoles("admin", "owner"), upload.single("logo"), uploadLogoHandler);
+router.patch("/logo", authMiddleware, authorizeRoles("superadmin", "company_admin"), upload.single("logo"), uploadLogoHandler);
 
 export default router;

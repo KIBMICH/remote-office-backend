@@ -8,8 +8,10 @@ const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 export interface AuthRequest<T = any> extends Request<any, any, T> {
   user?: {
     id: string;
+    _id: string;
     email: string;
     role?: string;
+    company?: string;
   };
 }
 
@@ -23,8 +25,11 @@ export const authMiddleware: RequestHandler = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string; role?: string };
-    (req as AuthRequest).user = decoded;
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string; role?: string; company?: string };
+    (req as AuthRequest).user = {
+      ...decoded,
+      _id: decoded.id // Map id to _id for consistency with MongoDB ObjectId
+    };
     next();
   } catch (error) {
     res.status(401).json({ message: "Token is not valid" });
