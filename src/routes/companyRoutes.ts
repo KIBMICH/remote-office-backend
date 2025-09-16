@@ -11,78 +11,44 @@ import { uploadBufferToCloudinary, destroyByPublicId } from "../utils/cloudinary
 
 const router = express.Router();
 
-// Define body types
-interface CreateCompanyBody {
-  name: string;
-  address?: string;
-}
+// Define body types (removed CreateCompanyBody and LinkUserBody as they're no longer needed)
 
-interface LinkUserBody {
-  userId: string;
-  companyId: string;
-}
-
-// Create a company (admin only). The creating admin becomes `createdBy`.
-const createCompanyHandler: RequestHandler<any, any, any> = async (req, res: Response) => {
-  try {
-    const { name, address } = req.body as CreateCompanyBody;
-    if (!name) return res.status(400).json({ message: "Company name is required" });
-
-    const existing = await Company.findOne({ name });
-    if (existing) return res.status(400).json({ message: "Company already exists" });
-
-    const userId = (req as AuthRequest).user?.id;
-    const company = new Company({ name, address, createdBy: userId });
-    await company.save();
-    res.status(201).json({ message: "Company created successfully", company });
-  } catch (error) {
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-router.post("/create", authMiddleware, requireSuperAdmin, createCompanyHandler);
-
-// Link an existing user to a company (admin only)
-const linkUserHandler: RequestHandler<any, any, any> = async (req, res: Response) => {
-  try {
-    const { userId, companyId } = req.body as LinkUserBody;
-    if (!userId || !companyId) return res.status(400).json({ message: "userId and companyId are required" });
-
-    const user = await User.findById(userId);
-    const company = await Company.findById(companyId);
-    if (!user || !company) return res.status(404).json({ message: "User or Company not found" });
-
-    user.company = String(company._id);
-    await user.save();
-
-    res.json({ message: "User linked to company successfully", user });
-  } catch (error) {
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-router.post("/link-user", authMiddleware, requireSuperAdmin, linkUserHandler);
-
-// Get the current user's company profile
+// Get companies based on user role - consolidated endpoint
 const getCompanyHandler: RequestHandler = async (req, res: Response) => {
   try {
     const { user } = req as AuthRequest;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
-    // Prefer user's company reference if available
-    let company = null as any;
-    if (user.id) {
-      const currentUser = await User.findById(user.id);
-      if (currentUser?.company) {
-        company = await Company.findById(currentUser.company);
+    if (user.role === "superadmin") {
+      // Superadmin can see all companies
+      const companies = await Company.find()
+        .populate('admin', 'name email')
+        .populate('createdBy', 'name email');
+      
+      return res.json({ 
+        message: "All companies retrieved successfully", 
+        companies 
+      });
+    } else {
+      // Other roles see their own company
+      let company = null as any;
+      if (user.id) {
+        const currentUser = await User.findById(user.id);
+        if (currentUser?.company) {
+          company = await Company.findById(currentUser.company);
+        }
       }
+      // Fallback: company created by the user (useful for initial setup)
+      if (!company) {
+        company = await Company.findOne({ createdBy: user.id });
+      }
+      if (!company) return res.status(404).json({ message: "Company not found" });
+      
+      return res.json({ 
+        message: "Company retrieved successfully", 
+        company 
+      });
     }
-    // Fallback: company created by the user (useful for initial setup)
-    if (!company) {
-      company = await Company.findOne({ createdBy: user.id });
-    }
-    if (!company) return res.status(404).json({ message: "Company not found" });
-    res.json({ company });
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }
@@ -110,14 +76,29 @@ const updateCompanyHandler: RequestHandler<any, any, any> = async (req, res: Res
     const { user } = req as AuthRequest<z.infer<typeof updateCompanySchema>>;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
-    // find company associated with the user
+    // Find company based on role-based access
     let company = null as any;
     const currentUser = await User.findById(user.id);
-    if (currentUser?.company) {
-      company = await Company.findById(currentUser.company);
+    
+    if (user.role === "superadmin") {
+      // Superadmin can update any company - get from request params or user's company
+      const companyId = req.params.companyId || currentUser?.company;
+      if (companyId) {
+        company = await Company.findById(companyId);
+      }
+    } else if (user.role === "company_admin") {
+      // Company admin can only update their assigned company
+      if (currentUser?.company) {
+        company = await Company.findById(currentUser.company);
+        // Verify this user is actually the admin of this company
+        if (company && company.admin.toString() !== user.id) {
+          return res.status(403).json({ message: "Forbidden: Not authorized to update this company" });
+        }
+      }
     } else {
-      company = await Company.findOne({ createdBy: user.id });
+      return res.status(403).json({ message: "Forbidden: Insufficient permissions to update company" });
     }
+    
     if (!company) return res.status(404).json({ message: "Company not found" });
 
     const updatableFields: (keyof z.infer<typeof updateCompanySchema>)[] = [
@@ -158,8 +139,9 @@ const updateCompanyHandler: RequestHandler<any, any, any> = async (req, res: Res
 };
 
 router.put("/update", authMiddleware, authorizeRoles("superadmin", "company_admin"), validate(updateCompanySchema), updateCompanyHandler);
+router.put("/:companyId/update", authMiddleware, authorizeRoles("superadmin", "company_admin"), validate(updateCompanySchema), updateCompanyHandler);
 
-// PATCH /api/companies/logo - upload and update company logo (admin or owner)
+// PATCH /api/companies/logo - upload and update company logo (superadmin or company_admin)
 const uploadLogoHandler: RequestHandler = async (req, res: Response) => {
   try {
     const { user } = req as AuthRequest;
@@ -170,14 +152,29 @@ const uploadLogoHandler: RequestHandler = async (req, res: Response) => {
       return res.status(400).json({ message: "No image file uploaded" });
     }
 
-    // find company associated with the user
+    // Find company based on role-based access
     let company: any = null;
     const currentUser = await User.findById(user.id);
-    if (currentUser?.company) {
-      company = await Company.findById(currentUser.company);
+    
+    if (user.role === "superadmin") {
+      // Superadmin can update any company logo - get from request params or user's company
+      const companyId = req.params.companyId || currentUser?.company;
+      if (companyId) {
+        company = await Company.findById(companyId);
+      }
+    } else if (user.role === "company_admin") {
+      // Company admin can only update their assigned company logo
+      if (currentUser?.company) {
+        company = await Company.findById(currentUser.company);
+        // Verify this user is actually the admin of this company
+        if (company && company.admin.toString() !== user.id) {
+          return res.status(403).json({ message: "Forbidden: Not authorized to update this company" });
+        }
+      }
     } else {
-      company = await Company.findOne({ createdBy: user.id });
+      return res.status(403).json({ message: "Forbidden: Insufficient permissions to update company logo" });
     }
+    
     if (!company) return res.status(404).json({ message: "Company not found" });
 
     const folder = `remoteoffice/companies/${company._id}`;
@@ -212,5 +209,6 @@ const uploadLogoHandler: RequestHandler = async (req, res: Response) => {
 };
 
 router.patch("/logo", authMiddleware, authorizeRoles("superadmin", "company_admin"), upload.single("logo"), uploadLogoHandler);
+router.patch("/:companyId/logo", authMiddleware, authorizeRoles("superadmin", "company_admin"), upload.single("logo"), uploadLogoHandler);
 
 export default router;

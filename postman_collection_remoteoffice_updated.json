@@ -2,7 +2,7 @@
   "info": {
     "name": "RemoteOffice API (Updated)",
     "_postman_id": "d4a3b1f0-remoteoffice-collection",
-    "description": "Postman collection for RemoteOffice backend with user and company profile endpoints.",
+    "description": "Postman collection for RemoteOffice backend with hierarchical role system.\n\nRole Hierarchy:\n- Superadmin: Can create companies and assign company admins\n- Company Admin: Can add users (employees/members) to their specific company\n- Employee/Member: Regular users within a company\n\nAPI Structure (Updated):\n- Auth routes handle company/user creation and management\n- Company routes handle profile updates and media uploads\n- Redundant endpoints have been removed for cleaner API\n\nEnvironment Variables Required:\n- baseUrl: API base URL (e.g., http://localhost:5000)\n- token: JWT token for authentication\n- SUPERADMIN_SECRET: Secret code for superadmin registration\n- companyId: Company ID for company-specific operations",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -36,6 +36,75 @@
               "mode": "raw",
               "raw": "{\n  \"name\": \"Isaiah Okibe\",\n  \"email\": \"isaiah@example.com\",\n  \"password\": \"Password123!\",\n  \"role\": \"employee\"\n}"
             }
+          },
+          "response": []
+        },
+        {
+          "name": "Register Superadmin",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Super Admin\",\n  \"email\": \"superadmin@example.com\",\n  \"password\": \"SuperAdmin123!\",\n  \"role\": \"superadmin\",\n  \"adminCode\": \"{{SUPERADMIN_SECRET}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Company (Superadmin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/auth/companies", "host": ["{{baseUrl}}"], "path": ["api", "auth", "companies"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyName\": \"TechCorp Solutions\",\n  \"adminName\": \"John Smith\",\n  \"adminEmail\": \"john.smith@techcorp.com\",\n  \"adminPassword\": \"CompanyAdmin123!\",\n  \"industry\": \"Technology\",\n  \"address\": \"123 Tech Street, Silicon Valley, CA\",\n  \"phone\": \"+1234567890\",\n  \"website\": \"https://techcorp.com\",\n  \"country\": \"USA\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Companies (Superadmin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/auth/companies", "host": ["{{baseUrl}}"], "path": ["api", "auth", "companies"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Add User to Company (Company Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/auth/companies/{{companyId}}/users", "host": ["{{baseUrl}}"], "path": ["api", "auth", "companies", "{{companyId}}", "users"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Doe\",\n  \"email\": \"jane.doe@techcorp.com\",\n  \"password\": \"Employee123!\",\n  \"role\": \"employee\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Company Users (Company Admin/Superadmin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/auth/companies/{{companyId}}/users", "host": ["{{baseUrl}}"], "path": ["api", "auth", "companies", "{{companyId}}", "users"] }
           },
           "response": []
         }
@@ -94,18 +163,19 @@
       "name": "Company",
       "item": [
         {
-          "name": "Get Company",
+          "name": "Get Company (Role-based)",
           "request": {
             "method": "GET",
             "header": [
               { "key": "Authorization", "value": "Bearer {{token}}" }
             ],
-            "url": { "raw": "{{baseUrl}}/api/company", "host": ["{{baseUrl}}"], "path": ["api", "company"] }
+            "url": { "raw": "{{baseUrl}}/api/company", "host": ["{{baseUrl}}"], "path": ["api", "company"] },
+            "description": "Returns all companies for superadmin, or current user's company for other roles"
           },
           "response": []
         },
         {
-          "name": "Update Company",
+          "name": "Update Company (Company Admin)",
           "request": {
             "method": "PUT",
             "header": [
@@ -115,45 +185,29 @@
             "url": { "raw": "{{baseUrl}}/api/company/update", "host": ["{{baseUrl}}"], "path": ["api", "company", "update"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"New Dimension Transport Company\",\n  \"phone\": \"+2349012345678\",\n  \"logoUrl\": \"https://cdn.remortify.com/company/newdimension.png\",\n  \"website\": \"https://newdimension.com\",\n  \"industry\": \"Transportation\",\n  \"country\": \"Nigeria\",\n  \"subscriptionPlan\": \"pro\",\n  \"subscriptionStatus\": \"active\",\n  \"billingCycle\": \"monthly\"\n}"
+              "raw": "{\n  \"name\": \"Updated Company Name\",\n  \"phone\": \"+2349012345678\",\n  \"website\": \"https://updatedcompany.com\",\n  \"industry\": \"Technology\",\n  \"address\": \"456 Updated Street, Lagos, Nigeria\",\n  \"country\": \"Nigeria\",\n  \"subscriptionPlan\": \"pro\",\n  \"subscriptionStatus\": \"active\",\n  \"billingCycle\": \"monthly\"\n}"
             }
           },
           "response": []
         },
         {
-          "name": "Create Company (Admin)",
+          "name": "Update Specific Company (Superadmin)",
           "request": {
-            "method": "POST",
+            "method": "PUT",
             "header": [
               { "key": "Authorization", "value": "Bearer {{token}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
-            "url": { "raw": "{{baseUrl}}/api/company/create", "host": ["{{baseUrl}}"], "path": ["api", "company", "create"] },
+            "url": { "raw": "{{baseUrl}}/api/company/{{companyId}}/update", "host": ["{{baseUrl}}"], "path": ["api", "company", "{{companyId}}", "update"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"New Dimension Transport Company\",\n  \"address\": \"123 Main Street, Minna, Nigeria\"\n}"
+              "raw": "{\n  \"name\": \"Superadmin Updated Company\",\n  \"industry\": \"Updated Industry\",\n  \"subscriptionPlan\": \"enterprise\",\n  \"subscriptionStatus\": \"active\"\n}"
             }
           },
           "response": []
         },
         {
-          "name": "Link User to Company (Admin)",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" },
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "url": { "raw": "{{baseUrl}}/api/company/link-user", "host": ["{{baseUrl}}"], "path": ["api", "company", "link-user"] },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"userId\": \"<USER_ID>\",\n  \"companyId\": \"<COMPANY_ID>\"\n}"
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Upload Company Logo (Admin/Owner)",
+          "name": "Upload Company Logo (Company Admin/Superadmin)",
           "request": {
             "method": "PATCH",
             "header": [
@@ -165,7 +219,26 @@
               "formdata": [
                 { "key": "logo", "type": "file", "src": [] }
               ]
-            }
+            },
+            "description": "Upload logo for current user's company (company admin) or any company (superadmin)"
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Specific Company Logo (Superadmin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/company/{{companyId}}/logo", "host": ["{{baseUrl}}"], "path": ["api", "company", "{{companyId}}", "logo"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "logo", "type": "file", "src": [] }
+              ]
+            },
+            "description": "Upload logo for a specific company by ID (superadmin only)"
           },
           "response": []
         }
