@@ -35,3 +35,6 @@ export const authMiddleware: RequestHandler = (req, res, next) => {
     res.status(401).json({ message: "Token is not valid" });
   }
 };
+
+// Alias for consistency with other middleware naming
+export const requireAuth = authMiddleware;

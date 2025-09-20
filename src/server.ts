@@ -8,6 +8,9 @@ import authRoutes from "./routes/authRoutes";
 import googleAuthRoutes from "./routes/googleAuth";
 import companyRoutes from "./routes/companyRoutes";
 import userRoutes from "./routes/userRoutes";
+import taskRoutes from "./routes/taskRoutes";
+import projectRoutes from "./routes/projectRoutes";
+import dashboardRoutes from "./routes/dashboardRoutes";
 import { authMiddleware } from "./middleware/authMiddleware";
 import MongoStore from "connect-mongo";
 
@@ -57,6 +60,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/auth", googleAuthRoutes);
 app.use("/api/company", companyRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/tasks", taskRoutes);
+app.use("/api/projects", projectRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 // health/root route
 app.get("/", (_req, res) => {
