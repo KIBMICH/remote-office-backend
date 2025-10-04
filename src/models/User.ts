@@ -21,8 +21,12 @@ export interface IUser extends Document {
   country?: string;
   address?: string;
   company?: string; // company id reference
-  createdAt?: Date;
-  updatedAt?: Date;
+  // Chat-related fields
+  chatStatus?: "online" | "offline" | "away" | "busy";
+  lastSeen?: Date;
+  socketIds?: string[]; // Track multiple socket connections for security
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const userSchema = new Schema<IUser>({
@@ -49,6 +53,14 @@ const userSchema = new Schema<IUser>({
   country: { type: String },
   address: { type: String },
   company: { type: Schema.Types.ObjectId, ref: "Company", required: false },
+  // Chat-related fields
+  chatStatus: { 
+    type: String, 
+    enum: ["online", "offline", "away", "busy"], 
+    default: "offline" 
+  },
+  lastSeen: { type: Date, default: Date.now },
+  socketIds: [{ type: String }], // Array of socket IDs for multi-device support
 }, { timestamps: true });
 
 export default mongoose.model<IUser>("User", userSchema);
