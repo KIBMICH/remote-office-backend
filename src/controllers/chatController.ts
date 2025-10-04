@@ -68,7 +68,7 @@ export const getChannels: RequestHandler = async (req, res) => {
         sender: {
           name: `${(channel.lastMessage as any).senderId.firstName || ''} ${(channel.lastMessage as any).senderId.lastName || ''}`.trim()
         },
-        timestamp: (channel.lastMessage as any).createdAt,
+        timestamp: (channel.lastMessage as any).createdAt?.toISOString(),
         type: (channel.lastMessage as any).type
       } : null,
       unreadCount: 0, // TODO: Implement unread count logic
@@ -257,7 +257,7 @@ export const getMessages: RequestHandler = async (req, res) => {
         email: message.senderId.email,
         avatarUrl: message.senderId.avatarUrl
       },
-      timestamp: message.createdAt,
+      timestamp: message.createdAt?.toISOString(),
       type: message.type,
       fileUrl: message.fileUrl,
       fileName: message.fileName,
@@ -344,7 +344,7 @@ export const sendMessage: RequestHandler = async (req, res) => {
         email: sender.email,
         avatarUrl: sender.avatarUrl
       },
-      timestamp: message.createdAt,
+      timestamp: message.createdAt?.toISOString(),
       type: message.type,
       isEdited: message.isEdited,
       replyTo: message.replyTo
@@ -409,10 +409,10 @@ export const editMessage: RequestHandler = async (req, res) => {
         email: sender.email,
         avatarUrl: sender.avatarUrl
       },
-      timestamp: message.createdAt,
+      timestamp: message.createdAt?.toISOString(),
       type: message.type,
       isEdited: message.isEdited,
-      editedAt: message.editedAt
+      editedAt: message.editedAt?.toISOString()
     };
 
     res.json(transformedMessage);
