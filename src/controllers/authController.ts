@@ -195,9 +195,20 @@ export const addUserToCompany = async (req: Request, res: Response) => {
     }
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email }).populate('company', 'name');
     if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
+      const companyName = (existingUser.company as any)?.name || 'Unknown Company';
+      return res.status(400).json({ 
+        message: "User already exists",
+        details: `A user with email ${email} already exists in ${companyName}`,
+        existingUser: {
+          id: existingUser._id,
+          name: existingUser.name,
+          email: existingUser.email,
+          role: existingUser.role,
+          company: companyName
+        }
+      });
     }
 
     // Get company to verify it exists
