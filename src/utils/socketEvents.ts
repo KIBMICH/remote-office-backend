@@ -55,11 +55,11 @@ export const initializeSocketEvents = (io: Server) => {
     /**
      * Handle joining a specific channel
      */
-    socket.on('join_channel', async (data: unknown) => {
+    authSocket.on('join_channel', async (data: unknown) => {
       try {
         // Rate limiting
-        if (!SocketRateLimiter.checkLimit(socket.userId, 'join')) {
-          socket.emit('error', { message: 'Too many join requests. Please slow down.' });
+        if (!SocketRateLimiter.checkLimit(authSocket.userId, 'join')) {
+          authSocket.emit('error', { message: 'Too many join requests. Please slow down.' });
           return;
         }
 
@@ -73,41 +73,41 @@ export const initializeSocketEvents = (io: Server) => {
         );
 
         if (!validData) {
-          socket.emit('error', { message: 'Invalid channel join data' });
+          authSocket.emit('error', { message: 'Invalid channel join data' });
           return;
         }
 
         const { channelId } = validData;
 
         // Security: Check channel access
-        const hasAccess = await checkChannelAccess(socket, channelId);
+        const hasAccess = await checkChannelAccess(authSocket, channelId);
         if (!hasAccess) {
-          socket.emit('error', { message: 'Access denied to channel' });
+          authSocket.emit('error', { message: 'Access denied to channel' });
           return;
         }
 
         // Join the channel room
-        socket.join(channelId);
+        authSocket.join(channelId);
         
         // Notify channel members
-        socket.to(channelId).emit('user_joined_channel', {
+        authSocket.to(channelId).emit('user_joined_channel', {
           channelId,
-          userId: socket.userId,
-          userName: `${socket.user.firstName || ''} ${socket.user.lastName || ''}`.trim() || socket.user.email
+          userId: authSocket.userId,
+          userName: `${authSocket.user.firstName || ''} ${authSocket.user.lastName || ''}`.trim() || authSocket.user.email
         });
 
-        socket.emit('joined_channel', { channelId });
+        authSocket.emit('joined_channel', { channelId });
 
       } catch (error) {
         console.error("Join channel error:", error);
-        socket.emit('error', { message: 'Failed to join channel' });
+        authSocket.emit('error', { message: 'Failed to join channel' });
       }
     });
 
     /**
      * Handle leaving a channel
      */
-    socket.on('leave_channel', async (data: unknown) => {
+    authSocket.on('leave_channel', async (data: unknown) => {
       try {
         const validData = validateSocketData<SocketJoinChannelInput>(
           data,
@@ -118,38 +118,38 @@ export const initializeSocketEvents = (io: Server) => {
         );
 
         if (!validData) {
-          socket.emit('error', { message: 'Invalid channel leave data' });
+          authSocket.emit('error', { message: 'Invalid channel leave data' });
           return;
         }
 
         const { channelId } = validData;
 
         // Leave the channel room
-        socket.leave(channelId);
+        authSocket.leave(channelId);
         
         // Notify channel members
-        socket.to(channelId).emit('user_left_channel', {
+        authSocket.to(channelId).emit('user_left_channel', {
           channelId,
-          userId: socket.userId,
-          userName: `${socket.user.firstName || ''} ${socket.user.lastName || ''}`.trim() || socket.user.email
+          userId: authSocket.userId,
+          userName: `${authSocket.user.firstName || ''} ${authSocket.user.lastName || ''}`.trim() || authSocket.user.email
         });
 
-        socket.emit('left_channel', { channelId });
+        authSocket.emit('left_channel', { channelId });
 
       } catch (error) {
         console.error("Leave channel error:", error);
-        socket.emit('error', { message: 'Failed to leave channel' });
+        authSocket.emit('error', { message: 'Failed to leave channel' });
       }
     });
 
     /**
      * Handle sending messages
      */
-    socket.on('send_message', async (data: unknown) => {
+    authSocket.on('send_message', async (data: unknown) => {
       try {
         // Rate limiting
-        if (!SocketRateLimiter.checkLimit(socket.userId, 'message')) {
-          socket.emit('error', { message: 'Too many messages. Please slow down.' });
+        if (!SocketRateLimiter.checkLimit(authSocket.userId, 'message')) {
+          authSocket.emit('error', { message: 'Too many messages. Please slow down.' });
           return;
         }
 
@@ -163,16 +163,16 @@ export const initializeSocketEvents = (io: Server) => {
         );
 
         if (!validData) {
-          socket.emit('error', { message: 'Invalid message data' });
+          authSocket.emit('error', { message: 'Invalid message data' });
           return;
         }
 
         const { channelId, content, type, replyTo } = validData;
 
         // Security: Check channel access
-        const hasAccess = await checkChannelAccess(socket, channelId);
+        const hasAccess = await checkChannelAccess(authSocket, channelId);
         if (!hasAccess) {
-          socket.emit('error', { message: 'Access denied to channel' });
+          authSocket.emit('error', { message: 'Access denied to channel' });
           return;
         }
 
@@ -181,12 +181,12 @@ export const initializeSocketEvents = (io: Server) => {
           const replyMessage = await Message.findOne({
             _id: replyTo,
             channelId,
-            companyId: socket.companyId,
+            companyId: authSocket.companyId,
             isDeleted: false
           }).lean();
 
           if (!replyMessage) {
-            socket.emit('error', { message: 'Reply message not found' });
+            authSocket.emit('error', { message: 'Reply message not found' });
             return;
           }
         }
@@ -194,9 +194,9 @@ export const initializeSocketEvents = (io: Server) => {
         // Create and save message
         const message = new Message({
           content,
-          senderId: socket.userId,
+          senderId: authSocket.userId,
           channelId,
-          companyId: socket.companyId,
+          companyId: authSocket.companyId,
           type: type || 'text',
           replyTo
         });
@@ -234,24 +234,24 @@ export const initializeSocketEvents = (io: Server) => {
         io.to(channelId).emit('new_message', messageData);
 
         // Send confirmation to sender
-        socket.emit('message_sent', { 
+        authSocket.emit('message_sent', { 
           tempId: (data as any)?.tempId, // For frontend optimistic updates
           message: messageData 
         });
 
       } catch (error) {
         console.error("Send message error:", error);
-        socket.emit('error', { message: 'Failed to send message' });
+        authSocket.emit('error', { message: 'Failed to send message' });
       }
     });
 
     /**
      * Handle typing indicators
      */
-    socket.on('typing_start', async (data: unknown) => {
+    authSocket.on('typing_start', async (data: unknown) => {
       try {
         // Rate limiting
-        if (!SocketRateLimiter.checkLimit(socket.userId, 'typing')) {
+        if (!SocketRateLimiter.checkLimit(authSocket.userId, 'typing')) {
           return; // Silently ignore excessive typing events
         }
 
@@ -268,14 +268,14 @@ export const initializeSocketEvents = (io: Server) => {
         const { channelId } = validData;
 
         // Security: Check channel access
-        const hasAccess = await checkChannelAccess(socket, channelId);
+        const hasAccess = await checkChannelAccess(authSocket, channelId);
         if (!hasAccess) return;
 
         // Broadcast typing indicator to other channel members
-        socket.to(channelId).emit('user_typing', {
+        authSocket.to(channelId).emit('user_typing', {
           channelId,
-          userId: socket.userId,
-          userName: `${socket.user.firstName || ''} ${socket.user.lastName || ''}`.trim() || socket.user.email
+          userId: authSocket.userId,
+          userName: `${authSocket.user.firstName || ''} ${authSocket.user.lastName || ''}`.trim() || authSocket.user.email
         });
 
       } catch (error) {
@@ -286,7 +286,7 @@ export const initializeSocketEvents = (io: Server) => {
     /**
      * Handle stop typing
      */
-    socket.on('typing_stop', async (data: unknown) => {
+    authSocket.on('typing_stop', async (data: unknown) => {
       try {
         const validData = validateSocketData<SocketTypingInput>(
           data,
@@ -301,13 +301,13 @@ export const initializeSocketEvents = (io: Server) => {
         const { channelId } = validData;
 
         // Security: Check channel access
-        const hasAccess = await checkChannelAccess(socket, channelId);
+        const hasAccess = await checkChannelAccess(authSocket, channelId);
         if (!hasAccess) return;
 
         // Broadcast stop typing to other channel members
-        socket.to(channelId).emit('user_stop_typing', {
+        authSocket.to(channelId).emit('user_stop_typing', {
           channelId,
-          userId: socket.userId
+          userId: authSocket.userId
         });
 
       } catch (error) {
@@ -318,7 +318,7 @@ export const initializeSocketEvents = (io: Server) => {
     /**
      * Handle marking messages as read
      */
-    socket.on('mark_as_read', async (data: unknown) => {
+    authSocket.on('mark_as_read', async (data: unknown) => {
       try {
         const validData = validateSocketData<SocketTypingInput>(
           data,
@@ -333,15 +333,15 @@ export const initializeSocketEvents = (io: Server) => {
         const { channelId } = validData;
 
         // Security: Check channel access
-        const hasAccess = await checkChannelAccess(socket, channelId);
+        const hasAccess = await checkChannelAccess(authSocket, channelId);
         if (!hasAccess) return;
 
         // TODO: Implement read receipts logic
         
         // Broadcast read status to channel members
-        socket.to(channelId).emit('messages_read', {
+        authSocket.to(channelId).emit('messages_read', {
           channelId,
-          userId: socket.userId,
+          userId: authSocket.userId,
           readAt: new Date()
         });
 
@@ -353,59 +353,59 @@ export const initializeSocketEvents = (io: Server) => {
     /**
      * Handle user status changes
      */
-    socket.on('status_change', async (data: { status: 'online' | 'away' | 'busy' }) => {
+    authSocket.on('status_change', async (data: { status: 'online' | 'away' | 'busy' }) => {
       try {
         const { status } = data;
         
         if (!['online', 'away', 'busy'].includes(status)) {
-          socket.emit('error', { message: 'Invalid status' });
+          authSocket.emit('error', { message: 'Invalid status' });
           return;
         }
 
         // Update user status
-        await User.findByIdAndUpdate(socket.userId, {
+        await User.findByIdAndUpdate(authSocket.userId, {
           chatStatus: status,
           lastSeen: new Date()
         });
 
         // Broadcast status change to company members
-        socket.to(`company:${socket.companyId}`).emit('user_status_change', {
-          userId: socket.userId,
+        authSocket.to(`company:${authSocket.companyId}`).emit('user_status_change', {
+          userId: authSocket.userId,
           status,
           lastSeen: new Date()
         });
 
       } catch (error) {
         console.error("Status change error:", error);
-        socket.emit('error', { message: 'Failed to update status' });
+        authSocket.emit('error', { message: 'Failed to update status' });
       }
     });
 
     /**
      * Handle disconnection
      */
-    socket.on('disconnect', async (reason) => {
-      console.log(`User ${socket.userId} disconnected: ${reason}`);
+    authSocket.on('disconnect', async (reason) => {
+      console.log(`User ${authSocket.userId} disconnected: ${reason}`);
       
       try {
         // Remove socket ID from user
-        await User.findByIdAndUpdate(socket.userId, {
-          $pull: { socketIds: socket.id },
+        await User.findByIdAndUpdate(authSocket.userId, {
+          $pull: { socketIds: authSocket.id },
           lastSeen: new Date()
         });
 
         // Check if user has other active connections
-        const user = await User.findById(socket.userId).select('socketIds').lean();
+        const user = await User.findById(authSocket.userId).select('socketIds').lean();
         
         if (!user || !user.socketIds || user.socketIds.length === 0) {
           // Set user offline if no active connections
-          await User.findByIdAndUpdate(socket.userId, {
+          await User.findByIdAndUpdate(authSocket.userId, {
             chatStatus: 'offline'
           });
 
           // Broadcast offline status to company members
-          socket.to(`company:${socket.companyId}`).emit('user_status_change', {
-            userId: socket.userId,
+          authSocket.to(`company:${authSocket.companyId}`).emit('user_status_change', {
+            userId: authSocket.userId,
             status: 'offline',
             lastSeen: new Date()
           });
@@ -419,8 +419,8 @@ export const initializeSocketEvents = (io: Server) => {
     /**
      * Handle connection errors
      */
-    socket.on('error', (error) => {
-      console.error(`Socket error for user ${socket.userId}:`, error);
+    authSocket.on('error', (error) => {
+      console.error(`Socket error for user ${authSocket.userId}:`, error);
     });
 
   });
