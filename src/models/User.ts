@@ -21,6 +21,8 @@ export interface IUser extends Document {
   country?: string;
   address?: string;
   company?: string; // company id reference
+  // Security fields
+  requirePasswordChange?: boolean; // Force password change on first login
   // Chat-related fields
   chatStatus?: "online" | "offline" | "away" | "busy";
   lastSeen?: Date;
@@ -53,6 +55,8 @@ const userSchema = new Schema<IUser>({
   country: { type: String },
   address: { type: String },
   company: { type: Schema.Types.ObjectId, ref: "Company", required: false },
+  // Security fields
+  requirePasswordChange: { type: Boolean, default: false },
   // Chat-related fields
   chatStatus: { 
     type: String, 

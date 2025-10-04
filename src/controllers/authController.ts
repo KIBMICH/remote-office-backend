@@ -81,6 +81,7 @@ export const login = async (req: Request, res: Response) => {
       token,
       user: serializeUser(user),
       expiresIn: 3600,
+      requirePasswordChange: user.requirePasswordChange || false
     });
   } catch (error) {
     res.status(500).json({ error: "Server error" });
@@ -159,10 +160,33 @@ export const createCompany = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * Generate a random secure password
+ */
+const generateTemporaryPassword = (): string => {
+  const length = 12;
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+  let password = "";
+  
+  // Ensure at least one of each type
+  password += "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Math.floor(Math.random() * 26)]; // Uppercase
+  password += "abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 26)]; // Lowercase
+  password += "0123456789"[Math.floor(Math.random() * 10)]; // Number
+  password += "!@#$%^&*"[Math.floor(Math.random() * 8)]; // Special char
+  
+  // Fill the rest randomly
+  for (let i = password.length; i < length; i++) {
+    password += charset[Math.floor(Math.random() * charset.length)];
+  }
+  
+  // Shuffle the password
+  return password.split('').sort(() => Math.random() - 0.5).join('');
+};
+
 // ADD USER TO COMPANY (Company admin only)
 export const addUserToCompany = async (req: Request, res: Response) => {
   try {
-    const { name, email, password, role = "employee" } = req.body;
+    const { name, email, role = "employee" } = req.body;
     const { companyId } = req.params;
 
     // Validate role - company admins can only create employees and members
@@ -182,20 +206,28 @@ export const addUserToCompany = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Company not found" });
     }
 
-    // Create new user
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Generate temporary password
+    const temporaryPassword = generateTemporaryPassword();
+    const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+    
+    // Create new user with requirePasswordChange flag
     const newUser = new User({
       name,
       email,
       password: hashedPassword,
       role,
-      company: companyId
+      company: companyId,
+      requirePasswordChange: true // Flag to force password change on first login
     });
     await newUser.save();
 
+    // TODO: Send email with temporary password
+    // await sendWelcomeEmail(email, name, temporaryPassword, company.name);
+
     res.status(201).json({
       message: "User added to company successfully",
-      user: serializeUser(newUser)
+      user: serializeUser(newUser),
+      temporaryPassword // IMPORTANT: Only return this in development. Remove in production and send via email
     });
   } catch (error) {
     res.status(500).json({ error: "Server error" });
@@ -228,6 +260,48 @@ export const getAllCompanies = async (req: Request, res: Response) => {
     res.json({
       message: "Companies retrieved successfully",
       companies
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+// CHANGE PASSWORD (Authenticated users)
+export const changePassword = async (req: Request, res: Response) => {
+  try {
+    const { user } = req as AuthRequest;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // Get user with password
+    const userDoc = await User.findById(user._id);
+    if (!userDoc) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Verify current password
+    const isMatch = await bcrypt.compare(currentPassword, userDoc.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Current password is incorrect" });
+    }
+
+    // Validate new password strength (basic validation)
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: "New password must be at least 8 characters long" });
+    }
+
+    // Hash and update password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    userDoc.password = hashedPassword;
+    userDoc.requirePasswordChange = false; // Clear the flag
+    await userDoc.save();
+
+    res.json({
+      message: "Password changed successfully",
+      requirePasswordChange: false
     });
   } catch (error) {
     res.status(500).json({ error: "Server error" });

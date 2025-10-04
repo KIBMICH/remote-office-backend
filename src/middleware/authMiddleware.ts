@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import User from "../models/User";
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 
@@ -12,12 +13,13 @@ export interface AuthRequest<T = any> extends Request<any, any, T> {
     email: string;
     role?: string;
     company?: string;
+    requirePasswordChange?: boolean;
   };
 }
 
 import type { RequestHandler } from "express";
 
-export const authMiddleware: RequestHandler = (req, res, next) => {
+export const authMiddleware: RequestHandler = async (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1]; // "Bearer <token>"
 
   if (!token) {
@@ -26,9 +28,14 @@ export const authMiddleware: RequestHandler = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string; role?: string; company?: string };
+    
+    // Fetch user to get requirePasswordChange status
+    const user = await User.findById(decoded.id).select('requirePasswordChange').lean();
+    
     (req as AuthRequest).user = {
       ...decoded,
-      _id: decoded.id // Map id to _id for consistency with MongoDB ObjectId
+      _id: decoded.id, // Map id to _id for consistency with MongoDB ObjectId
+      requirePasswordChange: user?.requirePasswordChange || false
     };
     next();
   } catch (error) {
