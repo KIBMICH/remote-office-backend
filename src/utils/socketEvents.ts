@@ -224,7 +224,7 @@ export const initializeSocketEvents = (io: Server) => {
             email: sender.email,
             avatarUrl: sender.avatarUrl
           },
-          timestamp: message.createdAt,
+          timestamp: message.createdAt?.toISOString() || new Date().toISOString(),
           type: message.type,
           isEdited: message.isEdited,
           replyTo: message.replyTo
