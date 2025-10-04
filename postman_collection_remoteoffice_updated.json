@@ -2,7 +2,7 @@
   "info": {
     "name": "RemoteOffice API (Updated)",
     "_postman_id": "d4a3b1f0-remoteoffice-collection",
-    "description": "Postman collection for RemoteOffice backend with hierarchical role system and project management.\n\nRole Hierarchy:\n- Superadmin: Can create companies and assign company admins\n- Company Admin: Can add users (employees/members) to their specific company, create/manage projects and tasks\n- Employee/Member: Regular users within a company, can update assigned tasks\n\nAPI Structure (Updated):\n- Auth routes handle company/user creation and management\n- Company routes handle profile updates and media uploads\n- Tasks routes handle task management (CRUD, status updates, filtering)\n- Projects routes handle project management (CRUD, member management)\n- Dashboard routes handle analytics and statistics\n\nEnvironment Variables Required:\n- baseUrl: API base URL (e.g., http://localhost:5000)\n- token: JWT token for authentication\n- SUPERADMIN_SECRET: Secret code for superadmin registration\n- companyId: Company ID for company-specific operations\n- taskId: Task ID for task-specific operations\n- projectId: Project ID for project-specific operations\n- userId: User ID for user-specific operations",
+    "description": "Postman collection for RemoteOffice backend with hierarchical role system, project management, and real-time chat.\n\nRole Hierarchy:\n- Superadmin: Can create companies and assign company admins\n- Company Admin: Can add users (employees/members) to their specific company, create/manage projects, tasks, and chat channels\n- Employee/Member: Regular users within a company, can update assigned tasks, participate in chat\n\nAPI Structure (Updated):\n- Auth routes handle company/user creation and management\n- Company routes handle profile updates and media uploads\n- Tasks routes handle task management (CRUD, status updates, filtering)\n- Projects routes handle project management (CRUD, member management)\n- Dashboard routes handle analytics and statistics\n- Chat routes handle real-time messaging (channels, messages, user search)\n\nReal-time Features:\n- Socket.IO integration for live chat, typing indicators, user status\n- Multi-tenant chat with company-based isolation\n- Channel types: direct, group, project-based\n- Message types: text, file, image with reply support\n- Rate limiting and security validation\n\nEnvironment Variables Required:\n- baseUrl: API base URL (e.g., http://localhost:5000)\n- token: JWT token for authentication\n- SUPERADMIN_SECRET: Secret code for superadmin registration\n- companyId: Company ID for company-specific operations\n- taskId: Task ID for task-specific operations\n- projectId: Project ID for project-specific operations\n- userId: User ID for user-specific operations\n- channelId: Channel ID for chat operations\n- messageId: Message ID for message operations\n\nSocket.IO Real-time Events:\nConnect to: ws://localhost:5000 (or your server URL)\nAuthentication: Include JWT token in connection auth\n\nClient Events (Send to Server):\n- join_channel: { channelId } - Join a channel room\n- leave_channel: { channelId } - Leave a channel room\n- send_message: { channelId, content, type?, replyTo? } - Send message via socket\n- typing_start: { channelId } - Start typing indicator\n- typing_stop: { channelId } - Stop typing indicator\n- mark_as_read: { channelId } - Mark messages as read\n- status_change: { status } - Update user status (online/away/busy)\n\nServer Events (Receive from Server):\n- new_message: Message data when someone sends a message\n- user_joined_channel: { channelId, userId, userName } - User joined channel\n- user_left_channel: { channelId, userId, userName } - User left channel\n- user_typing: { channelId, userId, userName } - User started typing\n- user_stop_typing: { channelId, userId } - User stopped typing\n- user_status_change: { userId, status, lastSeen } - User status changed\n- messages_read: { channelId, userId, readAt } - Messages marked as read\n- message_sent: { tempId?, message } - Confirmation of sent message\n- joined_channel: { channelId } - Confirmation of joining channel\n- left_channel: { channelId } - Confirmation of leaving channel\n- error: { message } - Error occurred\n\nRate Limits:\n- General chat operations: 100 requests per 15 minutes\n- Message sending: 30 messages per minute\n- Channel creation: 10 channels per hour\n- Typing events: Limited to prevent spam",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -632,6 +632,296 @@
               "path": ["api", "dashboard", "team-members"]
             },
             "description": "Get all team members for task assignment and project management"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Chat",
+      "item": [
+        {
+          "name": "Get Channels",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/channels",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chat", "channels"]
+            },
+            "description": "Get all channels where the user is a participant. Returns direct, group, and project channels with last message and participant info."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Channel",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/channels",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chat", "channels"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Project Discussion\",\n  \"type\": \"group\",\n  \"participantIds\": [\"{{userId}}\"],\n  \"isPrivate\": false,\n  \"allowedRoles\": [\"company_admin\", \"employee\"]\n}"
+            },
+            "description": "Create a new channel. Types: 'direct' (1-on-1), 'group' (team chat), 'project' (project-specific). Only company admins can create group channels."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Direct Channel",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/channels",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chat", "channels"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Direct Chat\",\n  \"type\": \"direct\",\n  \"participantIds\": [\"{{userId}}\"]\n}"
+            },
+            "description": "Create a direct (1-on-1) channel with another user. Only requires one participant ID (the other user)."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Project Channel",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/channels",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chat", "channels"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Project Team Chat\",\n  \"type\": \"project\",\n  \"participantIds\": [\"{{userId}}\"],\n  \"projectId\": \"{{projectId}}\",\n  \"isPrivate\": true\n}"
+            },
+            "description": "Create a project-specific channel. Requires projectId and user must be a project member."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Channel Messages",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/channels/{{channelId}}/messages?limit=50&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chat", "channels", "{{channelId}}", "messages"],
+              "query": [
+                { "key": "limit", "value": "50", "description": "Number of messages to retrieve (1-100)" },
+                { "key": "offset", "value": "0", "description": "Number of messages to skip for pagination" },
+                { "key": "before", "value": "", "description": "Get messages before this message ID (optional - leave empty for latest messages)" }
+              ]
+            },
+            "description": "Get messages for a specific channel with pagination. User must be a channel participant."
+          },
+          "response": []
+        },
+        {
+          "name": "Send Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/channels/{{channelId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chat", "channels", "{{channelId}}", "messages"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Hello team! How is the project progressing?\",\n  \"type\": \"text\"\n}"
+            },
+            "description": "Send a text message to a channel. Rate limited to 30 messages per minute."
+          },
+          "response": []
+        },
+        {
+          "name": "Send Reply Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/channels/{{channelId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chat", "channels", "{{channelId}}", "messages"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"@john Great progress on the authentication module!\",\n  \"type\": \"text\",\n  \"replyTo\": \"{{messageId}}\"\n}"
+            },
+            "description": "Send a reply to an existing message. Include replyTo field with the message ID being replied to."
+          },
+          "response": []
+        },
+        {
+          "name": "Edit Message",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/messages/{{messageId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chat", "messages", "{{messageId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Updated message content - fixed typo!\"\n}"
+            },
+            "description": "Edit your own message. Only text messages can be edited and only within 24 hours of sending."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Message",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/messages/{{messageId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chat", "messages", "{{messageId}}"]
+            },
+            "description": "Delete a message. Users can delete their own messages, company admins can delete any message in their company."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Channel as Read",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/channels/{{channelId}}/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chat", "channels", "{{channelId}}", "read"]
+            },
+            "description": "Mark all messages in a channel as read. Used for read receipt functionality."
+          },
+          "response": []
+        },
+        {
+          "name": "Search Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/users/search?q=john",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chat", "users", "search"],
+              "query": [
+                { "key": "q", "value": "john", "description": "Search query for user name or email" }
+              ]
+            },
+            "description": "Search for users within the same company for channel invitations. Returns up to 20 results."
+          },
+          "response": []
+        },
+        {
+          "name": "Join Channel",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/channels/{{channelId}}/join",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chat", "channels", "{{channelId}}", "join"]
+            },
+            "description": "Join a public channel. Cannot join private channels without invitation or direct channels."
+          },
+          "response": []
+        },
+        {
+          "name": "Leave Channel",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/channels/{{channelId}}/leave",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chat", "channels", "{{channelId}}", "leave"]
+            },
+            "description": "Leave a channel. Cannot leave direct channels. Channel creator must transfer ownership before leaving."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Channel Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/channels/{{channelId}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chat", "channels", "{{channelId}}", "users"]
+            },
+            "description": "Get all users in a channel with their status and role information."
+          },
+          "response": []
+        },
+        {
+          "name": "Upload File (Not Implemented)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/upload",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chat", "upload"]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": [] },
+                { "key": "channelId", "value": "{{channelId}}", "type": "text" }
+              ]
+            },
+            "description": "Upload file for chat. Currently returns 501 Not Implemented - to be integrated with existing Cloudinary setup."
           },
           "response": []
         }
